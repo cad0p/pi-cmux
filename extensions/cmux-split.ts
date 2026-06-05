@@ -1,37 +1,25 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { buildContextualTabTitle, buildPiCommand, openCommandInNewSplit, type SplitDirection } from "./cmux-core.ts";
-
-async function openPiInSplit(
-	pi: ExtensionAPI,
-	ctx: ExtensionCommandContext,
-	direction: SplitDirection,
-	args: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-	const prompt = args.trim();
-	return openCommandInNewSplit(
-		pi,
-		direction,
-		buildPiCommand(ctx.cwd, { prompt: prompt.length > 0 ? prompt : undefined }),
-		{ tabTitle: await buildContextualTabTitle(pi, ctx.cwd, prompt, "Pi") },
-	);
-}
+import { buildPiCommand, openCommandInNewSplit, type SplitDirection } from "./cmux-core.ts";
 
 function registerSplitCommand(
 	pi: ExtensionAPI,
 	name: string,
 	direction: SplitDirection,
 	description: string,
-	successMessage: string,
 ): void {
 	pi.registerCommand(name, {
 		description,
-		handler: async (args, ctx) => {
-			const result = await openPiInSplit(pi, ctx, direction, args);
-			if (result.ok) {
-				ctx.ui.notify(successMessage, "info");
-			} else {
-				ctx.ui.notify(`cmux split failed: ${result.error}`, "error");
-			}
+		handler: async (_args, ctx: ExtensionCommandContext) => {
+			const sessionId = ctx.sessionManager.getSessionId();
+			const result = await openCommandInNewSplit(
+				pi,
+				direction,
+				buildPiCommand(ctx.cwd, { sessionId }),
+			);
+			ctx.ui.notify(
+				result.ok ? `Opened cmux split (${direction === "right" ? "vertical" : "horizontal"})` : `cmux split failed: ${result.error}`,
+				result.ok ? "info" : "error",
+			);
 		},
 	});
 }
@@ -41,29 +29,12 @@ export default function cmuxSplitExtension(pi: ExtensionAPI) {
 		pi,
 		"cmv",
 		"right",
-		"Open a new vertical cmux split and start a fresh pi session",
-		"Opened a new vertical cmux split",
+		"Open a vertical cmux split with a snapshot of the current pi session — fork, clone, or branch from there",
 	);
-	registerSplitCommand(
-		pi,
-		"cmux-v",
-		"right",
-		"Alias for /cmv",
-		"Opened a new vertical cmux split",
-	);
-
 	registerSplitCommand(
 		pi,
 		"cmh",
 		"down",
-		"Open a new horizontal cmux split and start a fresh pi session",
-		"Opened a new horizontal cmux split",
-	);
-	registerSplitCommand(
-		pi,
-		"cmux-h",
-		"down",
-		"Alias for /cmh",
-		"Opened a new horizontal cmux split",
+		"Open a horizontal cmux split with a snapshot of the current pi session — fork, clone, or branch from there",
 	);
 }

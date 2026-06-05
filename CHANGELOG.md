@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Removed
+
+- Removed `/cmcv`, `/cmch` (continuation and worktree handoff).
+- Removed `/cmo`, `/cmoh`, `/cmt` and the agent-facing `cmux_open_terminal` tool.
+- Removed pluggable cmux commands via `pi-cmux.commands`.
+- Removed `/cmz`, `/cmzh` (zoxide directory jumps).
+- Removed `/cmrv`, `/cmrh` (review workflows).
+- Removed contextual tab-title renaming (the surface name is now whatever pi shows by default).
+- Removed `docs/usage.md`; consolidated into the README.
+
+### Changed
+
+- `/cmv` and `/cmh` now reattach to the current session with `pi --session <id>` in a new cmux split. The original pane keeps its running pi — use `/fork` or `/clone` from the new pane to branch.
+- `cmux-core.ts` slimmed: dropped `openCommandInNewTab`, `buildShellCommand`, `buildContextualTabTitle`, and the `git rev-parse` call used for tab titles.
+
 ## [0.1.16] - 2026-05-27
 
 ### Added

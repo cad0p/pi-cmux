@@ -30,7 +30,6 @@
   },
   "files": [
     "extensions/",
-    "docs/",
     "install.mjs",
     "README.md",
     "CHANGELOG.md"
