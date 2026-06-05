@@ -1,16 +1,8 @@
 # pi-cmux
 
-<img width="1335" height="758" alt="Screenshot 2026-05-27 at 12 05 46" src="https://github.com/user-attachments/assets/27806213-60f9-4c30-84d4-4a331ea1484b" />
+Pi package that connects [pi](https://pi.dev) to [cmux](https://www.cmux.dev): the cmux sidebar, notifications, and run status stay in sync with what pi is doing, and you can split pi into the same session in a new pane.
 
-[![CI](https://github.com/javiermolinar/pi-cmux/actions/workflows/ci.yml/badge.svg)](https://github.com/javiermolinar/pi-cmux/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/pi-cmux.svg)](https://www.npmjs.com/package/pi-cmux)
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-
-Pi package with [cmux](https://www.cmux.dev)-powered terminal integrations for [Pi](https://pi.dev).
-
-## What it adds
-
-`pi-cmux` keeps Pi terminal-native by delegating notifications, sidebar status, pane splits, tab naming, pluggable tool commands, directory jumps, review handoff, and continuation workflows to cmux.
+pi-cmux installs three extensions and registers no agent-callable tools — all commands are user-invoked slash commands.
 
 ## Install
 
@@ -18,7 +10,7 @@ Pi package with [cmux](https://www.cmux.dev)-powered terminal integrations for [
 pi install npm:pi-cmux
 ```
 
-Or install/update with the package installer:
+Or run the package installer:
 
 ```bash
 npx pi-cmux
@@ -30,75 +22,67 @@ If Pi is already running:
 /reload
 ```
 
-## Commands
+## What it adds
 
-| Workflow | Commands | Summary |
-|---|---|---|
-| Notifications | automatic | Sends `cmux notify` when Pi waits, completes work, or errors. |
-| Sidebar status/log | automatic | Updates cmux status, progress, logs, and surface flash while Pi runs. |
-| Split Pi | `/cmv [prompt]`, `/cmh [prompt]` | Opens a new right/lower split with Pi in the same project. |
-| Run a tool | `/cmo <cmd>`, `/cmoh <cmd>`, `/cmt <cmd>` | Opens a split or tab and runs a shell command in the same project. |
-| Pluggable tools | custom `/<name>` | Registers cmux split shortcuts from `pi-cmux.commands` settings. |
-| Jump directory | `/cmz <query>`, `/cmzh <query>` | Resolves a zoxide match or path, then opens Pi there. |
-| Continue task | `/cmcv [note]`, `/cmch [note]` | Opens a related handoff session in a split. |
-| Continue in worktree | `/cmcv -c <branch> [--from <ref>] [note]` | Creates a branch worktree and starts Pi there with handoff context. |
-| Review in split | `/cmrv [flags] [target]`, `/cmrh [flags] [target]` | Starts a focused review session in a split. |
+### Snapshot the current session into a split
 
-Detailed command examples: [docs/usage.md](docs/usage.md).
+| Command | Effect |
+|---|---|
+| `/cmv` | Open a vertical cmux split with a snapshot of the current pi session. |
+| `/cmh` | Open a horizontal cmux split with a snapshot of the current pi session. |
 
-## Common examples
+The original pane keeps its running pi — the new pane reattaches to the same session file (`pi --session <id>`) and shows the conversation history. From there, use `/fork` or `/clone` to branch into an independent session, or `/compact` to summarize before continuing. The parent pane is unaffected. Inside cmux SSH workspaces, the new split opens on the SSH host automatically.
 
-```text
-/cmv Review the auth flow
-/cmo npm test
-/cmt k9s
-/cmz mono
-/cmcv focus on tests
-/cmcv -c fix/sidebar --from main
-/cmrv --bugs src/auth.ts
-/cmrv https://github.com/owner/repo/pull/123
-```
+### Notify (automatic)
+
+`cmux-notify` calls `cmux notify` when pi finishes a run:
+
+- **Waiting** — pi stopped streaming and is waiting for you
+- **Task Complete** — the run finished
+- **Error** — the run failed
+
+### Sidebar (automatic)
+
+`cmux-sidebar` keeps the cmux right sidebar in sync while pi runs. It activates only inside a cmux workspace:
+
+- `cmux set-status` — running / tool / waiting / done / errored pill
+- `cmux set-progress` — coarse run progress with live token counts
+- `cmux log` — start, changed files, warnings, final summary, compact session token counts
+- `cmux trigger-flash` — flashes the surface when a run finishes and needs attention
 
 ## Configuration
+
+All settings are environment variables. Defaults are sensible; tune only if you need to.
+
+### Notifications
 
 | Variable | Default | Purpose |
 |---|---:|---|
 | `PI_CMUX_NOTIFY_LEVEL` | `all` | `all`, `medium`, `low`, or `disabled`. |
-| `PI_CMUX_NOTIFY_INCLUDE_RESPONSE` | `0` | Append truncated final assistant response to non-error notifications. |
-| `PI_CMUX_NOTIFY_THRESHOLD_MS` | `15000` | Duration threshold for `Task Complete` vs `Waiting`. |
+| `PI_CMUX_NOTIFY_INCLUDE_RESPONSE` | `0` | Set `1` to append up to 500 chars of the final assistant response to non-error notifications. |
+| `PI_CMUX_NOTIFY_THRESHOLD_MS` | `15000` | Run-duration threshold for `Task Complete` vs `Waiting`. |
+| `PI_CMUX_NOTIFY_DEBOUNCE_MS` | `3000` | Suppress repeated identical notifications within this window. |
+| `PI_CMUX_NOTIFY_TITLE` | `Pi` | Notification title. |
+
+### Sidebar
+
+| Variable | Default | Purpose |
+|---|---:|---|
 | `PI_CMUX_SIDEBAR` | `1` | Set `0` to disable sidebar integration. |
 | `PI_CMUX_SIDEBAR_FLASH` | `all` | `all`, `error`, or `disabled`. |
-| `PI_CMUX_SIDEBAR_PROGRESS` | `1` | Set `0` to disable sidebar progress updates. |
-| `PI_CMUX_SIDEBAR_TOKENS` | `1` | Include compact live cumulative session token counts in sidebar progress and summaries. |
-| `PI_CMUX_SIDEBAR_COST` | `0` | Include reported model cost alongside token counts. |
 | `PI_CMUX_SIDEBAR_LOG_TOOLS` | `0` | Set `1` to log every tool result. |
+| `PI_CMUX_SIDEBAR_LOG_PROMPT` | `0` | Set `1` to include a truncated prompt in the start log. |
+| `PI_CMUX_SIDEBAR_PROGRESS` | `1` | Set `0` to disable progress updates. |
+| `PI_CMUX_SIDEBAR_TOKENS` | `1` | Include compact live session token counts in progress and summaries. |
+| `PI_CMUX_SIDEBAR_COST` | `0` | Include reported model cost alongside token counts. |
+| `PI_CMUX_SIDEBAR_FINAL_CLEAR_MS` | `2500` | Delay before clearing the final status/progress. |
+| `PI_CMUX_SIDEBAR_STATUS_KEY` | — | Override the status key. |
+| `PI_CMUX_SIDEBAR_STATUS_PRIORITY` | `80` | Status priority. |
 
-Custom split shortcuts can be registered under `pi-cmux.commands` in `~/.pi/agent/settings.json` or `.pi/settings.json`; see [docs/usage.md](docs/usage.md#pluggable-tool-commands).
-
-Example Hunk review shortcut:
-
-```json
-{
-  "pi-cmux": {
-    "commands": {
-      "ck": {
-        "run": "hunk diff --agent-notes --watch",
-        "acceptArgs": true,
-        "description": "Open Hunk diff with agent notes in a cmux split"
-      }
-    }
-  }
-}
-```
-
-Use `/ck` to open Hunk in a cmux split, add Hunk comments while reviewing, then ask Pi to read them.
-
-`pi-cmux` also exposes an agent tool so Pi can open an explicitly requested terminal command in a cmux split or tab. For example, asking "open k9s in a new tab" lets Pi open `k9s` without trying to capture the TUI through a shell command.
-
-cmux workspace/surface targeting uses `CMUX_WORKSPACE_ID` and `CMUX_SURFACE_ID` automatically. Sidebar integration only activates inside a cmux workspace.
+cmux uses the current `CMUX_WORKSPACE_ID` and `CMUX_SURFACE_ID` automatically. Sidebar integration only activates inside a cmux workspace.
 
 ## Bundled resources
 
-Extensions: `cmux-notify`, `cmux-sidebar`, `cmux-split`, `cmux-open`, `cmux-zoxide`, `cmux-review`, `cmux-continue`.
-
-`pi-cmux` intentionally does not bundle generic review skills or prompt templates, so packages that provide `/review`, `/review-diff`, or `code-review` can own those names without conflicts.
+- `cmux-notify` — `cmux notify` on agent idle / complete / error
+- `cmux-sidebar` — `cmux set-status`, `set-progress`, `log`, `trigger-flash`
+- `cmux-split` — `/cmv`, `/cmh`
